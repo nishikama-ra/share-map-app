@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Map Share</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <main id="appShell" class="app-shell">
+    <section class="map-pane" aria-label="地図">
+      <div id="map"></div>
+    </section>
+
+    <aside class="side-pane" aria-label="地点リスト">
+      <header class="app-header">
+        <div>
+          <p class="eyebrow">Map Share</p>
+          <h1>Share Places and Routes on a Map</h1>
+        </div>
+        <button id="resetPanel" class="icon-button" type="button" title="メニューを閉じる" aria-label="メニューを閉じる">
+          <span aria-hidden="true">×</span>
+        </button>
+      </header>
+
+      <form id="searchForm" class="search-box">
+        <label for="searchInput">場所を検索</label>
+        <div class="search-row">
+          <input id="searchInput" name="q" type="search" placeholder="例: 鎌倉駅、東京タワー" autocomplete="off">
+          <button type="submit">検索</button>
+        </div>
+      </form>
+
+      <section id="selectedPlacePanel" class="selected-place-panel" hidden aria-label="選択中の地点">
+        <div>
+          <p class="eyebrow">Selected</p>
+          <h2 id="selectedPlaceTitle">地点</h2>
+          <p id="selectedPlaceMeta"></p>
+          <p id="selectedPlaceNote"></p>
+        </div>
+        <button id="editSelectedPlace" class="primary-button" type="button">編集</button>
+      </section>
+
+      <form id="placeForm" class="place-editor">
+        <input id="editingIndex" type="hidden" value="">
+        <div class="field-grid">
+          <label>
+            場所名
+            <input id="placeTitle" type="text" placeholder="場所名">
+          </label>
+          <label>
+            ピン種類
+            <select id="placeType">
+              <option value="stop">立ち寄り</option>
+              <option value="start">出発</option>
+              <option value="goal">到着</option>
+              <option value="parking">駐車場</option>
+              <option value="warning">注意</option>
+              <option value="food">食事</option>
+            </select>
+          </label>
+          <label>
+            地図上コメント
+            <textarea id="placeNote" rows="3" placeholder="集合時間、注意事項など"></textarea>
+          </label>
+        </div>
+        <div class="coord-row">
+          <label>
+            緯度
+            <input id="placeLat" type="number" step="0.000001" placeholder="35.000000">
+          </label>
+          <label>
+            経度
+            <input id="placeLng" type="number" step="0.000001" placeholder="139.000000">
+          </label>
+        </div>
+        <div class="form-action-row">
+          <button id="savePlace" class="primary-button" type="submit">地点を追加</button>
+          <button id="newPlace" class="secondary-button" type="button" hidden>新規追加に戻る</button>
+        </div>
+        <p id="editModeStatus" class="edit-mode-status">地図をクリックすると新しい地点の座標を入れられます。</p>
+      </form>
+
+      <section class="route-card" aria-label="ルート表示">
+        <label class="toggle-row">
+          <input id="showRoute" type="checkbox" checked>
+          道路沿いのルートを表示
+        </label>
+        <p id="routeStatus">2地点以上でルートを表示できます。</p>
+      </section>
+
+      <section class="share-card" aria-label="共有リンク">
+        <div>
+          <h2>共有リンク</h2>
+          <p id="shareStatus">地点を追加するとURLが作成されます。</p>
+        </div>
+        <button id="copyLink" type="button">コピー</button>
+      </section>
+
+      <section class="places-section" aria-label="登録地点">
+        <div class="section-heading">
+          <h2>地点一覧</h2>
+          <span id="placeCount">0件</span>
+        </div>
+        <ol id="placesList" class="places-list"></ol>
+      </section>
+    </aside>
+  </main>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="./app.js"></script>
+</body>
+</html>
