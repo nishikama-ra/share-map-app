@@ -236,7 +236,7 @@ function clearPreviewMarker() {
     state.previewMarker.remove();
     state.previewMarker = null;
   }
-  document.querySelectorAll(".custom-pin-wrap.is-preview, .preview-comment-label").forEach((element) => {
+  document.querySelectorAll(".custom-pin-wrap.is-preview").forEach((element) => {
     element.remove();
   });
 }
@@ -255,26 +255,17 @@ function updatePreviewMarker() {
   }
 
   const place = currentEditorPlace({
-    title: els.placeTitle.value.trim() || "追加予定",
     lat: Number(els.placeLat.value),
     lng: Number(els.placeLng.value),
   });
   const latLng = [place.lat, place.lng];
-  const label = `<div class="map-label-title">${escapeHtml(place.title)}</div><div>保存前の仮ピン</div>`;
 
   if (!state.previewMarker) {
     state.previewMarker = L.marker(latLng, {
       draggable: true,
       icon: createPreviewIcon(place),
       zIndexOffset: 900,
-    })
-      .bindTooltip(label, {
-        permanent: true,
-        direction: "right",
-        offset: [14, -22],
-        className: "map-comment-label preview-comment-label",
-      })
-      .addTo(map);
+    }).addTo(map);
 
     state.previewMarker.on("dragend", () => {
       const position = state.previewMarker.getLatLng();
@@ -285,7 +276,6 @@ function updatePreviewMarker() {
   } else {
     state.previewMarker.setLatLng(latLng);
     state.previewMarker.setIcon(createPreviewIcon(place));
-    state.previewMarker.setTooltipContent(label);
   }
 }
 

@@ -410,11 +410,6 @@ select:focus {
   box-shadow: 0 0 0 4px rgba(217, 119, 6, 0.22), 0 5px 14px rgba(0, 0, 0, 0.24);
 }
 
-.preview-comment-label {
-  border-style: dashed;
-  border-color: rgba(217, 119, 6, 0.45);
-  background: rgba(255, 251, 235, 0.96);
-}
 
 .map-comment-label {
   padding: 7px 9px;
