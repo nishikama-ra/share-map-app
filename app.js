@@ -22,6 +22,8 @@ L.Icon.Default.mergeOptions({
 const state = {
   places: [],
   markers: [],
+  labelMarkers: [],
+  labelLines: [],
   previewMarker: null,
   selectedIndex: null,
   routeLayer: null,
@@ -293,6 +295,108 @@ function updatePreviewMarker() {
   }
 }
 
+function clearLabelOverlays() {
+  state.labelMarkers.forEach((marker) => marker.remove());
+  state.labelLines.forEach((line) => line.remove());
+  state.labelMarkers = [];
+  state.labelLines = [];
+}
+
+function createLabelIcon(place) {
+  return L.divIcon({
+    className: "map-label-anchor",
+    html: '<div class="map-comment-label">' + markerTooltip(place) + '</div>',
+    iconSize: null,
+    iconAnchor: [0, 0],
+  });
+}
+
+function rectOverlapArea(a, b) {
+  const width = Math.max(0, Math.min(a.right, b.right) - Math.max(a.left, b.left));
+  const height = Math.max(0, Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top));
+  return width * height;
+}
+
+function expandedRect(rect, padding = 8) {
+  return {
+    left: rect.left - padding,
+    right: rect.right + padding,
+    top: rect.top - padding,
+    bottom: rect.bottom + padding,
+  };
+}
+
+function buildLabelCandidates(labelWidth) {
+  const candidates = [];
+  const columns = [
+    32,
+    -labelWidth - 32,
+    190,
+    -labelWidth - 190,
+    -labelWidth / 2,
+  ];
+  const rows = [-260, -208, -156, -104, -52, 0, 52, 104, 156, 208, 260];
+  rows.forEach((y) => {
+    columns.forEach((x) => {
+      candidates.push({ x, y });
+    });
+  });
+  return candidates.sort((a, b) => Math.hypot(a.x, a.y) - Math.hypot(b.x, b.y));
+}
+
+function placeLabelMarker(labelMarker, pinLatLng, placedRects) {
+  const pinPoint = map.latLngToLayerPoint(pinLatLng);
+  const element = labelMarker.getElement();
+  const labelWidth = element?.offsetWidth || 180;
+  const candidates = buildLabelCandidates(labelWidth);
+  let best = null;
+  candidates.forEach((candidate) => {
+    const labelPoint = L.point(pinPoint.x + candidate.x, pinPoint.y + candidate.y);
+    labelMarker.setLatLng(map.layerPointToLatLng(labelPoint));
+    const rect = element.getBoundingClientRect();
+    const padded = expandedRect(rect);
+    const overlap = placedRects.reduce((total, placed) => total + rectOverlapArea(padded, placed), 0);
+    const distancePenalty = Math.hypot(candidate.x, candidate.y) * 0.18;
+    const viewportPenalty = rect.left < 0 || rect.top < 0 || rect.right > window.innerWidth || rect.bottom > window.innerHeight ? 800 : 0;
+    const score = overlap * 20 + distancePenalty + viewportPenalty;
+    if (!best || score < best.score) {
+      const centerPoint = L.point(labelPoint.x + rect.width / 2, labelPoint.y + rect.height / 2);
+      best = { labelPoint, centerPoint, rect: padded, score };
+    }
+  });
+  if (!best) {
+    return null;
+  }
+  labelMarker.setLatLng(map.layerPointToLatLng(best.labelPoint));
+  placedRects.push(best.rect);
+  return map.layerPointToLatLng(best.centerPoint);
+}
+function renderLabelOverlays() {
+  clearLabelOverlays();
+  const placedRects = [];
+  state.places.forEach((place) => {
+    const pinLatLng = L.latLng(place.lat, place.lng);
+    const labelMarker = L.marker(pinLatLng, {
+      icon: createLabelIcon(place),
+      interactive: false,
+      keyboard: false,
+      zIndexOffset: 700,
+    }).addTo(map);
+    state.labelMarkers.push(labelMarker);
+    const labelCenter = placeLabelMarker(labelMarker, pinLatLng, placedRects);
+    if (labelCenter) {
+      const connector = L.polyline([pinLatLng, labelCenter], {
+        color: "#1f7a68",
+        weight: 1.5,
+        opacity: 0.62,
+        dashArray: "3 5",
+        interactive: false,
+      }).addTo(map);
+      state.labelLines.push(connector);
+    }
+  });
+}
+
 function selectPlace(index) {
   showMenu();
   state.selectedIndex = index;
@@ -302,6 +406,7 @@ function selectPlace(index) {
 }
 
 function renderMarkers() {
+  clearLabelOverlays();
   state.markers.forEach((marker) => marker.remove());
   state.markers = state.places.map((place, index) => {
     const marker = L.marker([place.lat, place.lng], {
@@ -309,12 +414,6 @@ function renderMarkers() {
       icon: createPinIcon(place, index),
     })
       .bindPopup(markerPopup(place, index))
-      .bindTooltip(markerTooltip(place), {
-        permanent: true,
-        direction: "right",
-        offset: [14, -22],
-        className: "map-comment-label",
-      })
       .addTo(map);
 
     marker.on("click", () => {
@@ -337,6 +436,7 @@ function renderMarkers() {
 
     return marker;
   });
+  renderLabelOverlays();
 }
 
 function fitToPlaces() {
@@ -635,6 +735,8 @@ function copyShareLink() {
     window.prompt("このURLをコピーしてください。", url);
   });
 }
+
+map.on("zoomend", renderLabelOverlays);
 
 map.on("click", (event) => {
   showMenu();

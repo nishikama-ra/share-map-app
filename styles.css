@@ -436,6 +436,8 @@ select:focus {
   text-align: left;
 }
 
+.map-label-anchor { pointer-events: none; }
+
 .map-comment-label::before { display: none; }
 .map-label-title {
   max-width: 100%;
