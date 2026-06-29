@@ -1,4 +1,4 @@
-const DEFAULT_CENTER = [35.319, 139.546];
+const DEFAULT_CENTER = [35.31936, 139.50430];
 const DEFAULT_ZOOM = 12;
 const STORAGE_KEY = "map-share-draft";
 const ROUTE_ENDPOINT = "https://router.project-osrm.org/route/v1/driving/";
