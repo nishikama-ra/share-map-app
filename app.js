@@ -22,6 +22,7 @@ L.Icon.Default.mergeOptions({
 const state = {
   places: [],
   markers: [],
+  previewMarker: null,
   selectedIndex: null,
   routeLayer: null,
   routeRequestId: 0,
@@ -187,6 +188,18 @@ function createPinIcon(place, index) {
   });
 }
 
+function createPreviewIcon(place) {
+  const type = PIN_TYPES[place.type] || PIN_TYPES.stop;
+  return L.divIcon({
+    className: "custom-pin-wrap is-preview",
+    html: `<span class="custom-pin" style="--pin-color:${type.color}"><span>+</span></span>`,
+    iconSize: [34, 42],
+    iconAnchor: [17, 38],
+    popupAnchor: [0, -36],
+    tooltipAnchor: [18, -32],
+  });
+}
+
 function setMenuHidden(hidden) {
   state.menuHidden = hidden;
   els.appShell.classList.toggle("menu-hidden", hidden);
@@ -216,6 +229,64 @@ function renderSelectedPanel() {
   els.selectedPlaceMeta.textContent = `${type.label} / ${place.lat.toFixed(6)}, ${place.lng.toFixed(6)}`;
   els.selectedPlaceNote.textContent = place.note || "コメントなし";
   els.editSelectedPlace.dataset.index = String(index);
+}
+
+function clearPreviewMarker() {
+  if (state.previewMarker) {
+    state.previewMarker.remove();
+    state.previewMarker = null;
+  }
+  document.querySelectorAll(".custom-pin-wrap.is-preview, .preview-comment-label").forEach((element) => {
+    element.remove();
+  });
+}
+
+function editorHasCoordinates() {
+  const latValue = els.placeLat.value.trim();
+  const lngValue = els.placeLng.value.trim();
+  return latValue !== "" && lngValue !== "" && Number.isFinite(Number(latValue)) && Number.isFinite(Number(lngValue));
+}
+
+function updatePreviewMarker() {
+  const isNewPlace = els.editingIndex.value === "";
+  if (!isNewPlace || !editorHasCoordinates()) {
+    clearPreviewMarker();
+    return;
+  }
+
+  const place = currentEditorPlace({
+    title: els.placeTitle.value.trim() || "追加予定",
+    lat: Number(els.placeLat.value),
+    lng: Number(els.placeLng.value),
+  });
+  const latLng = [place.lat, place.lng];
+  const label = `<div class="map-label-title">${escapeHtml(place.title)}</div><div>保存前の仮ピン</div>`;
+
+  if (!state.previewMarker) {
+    state.previewMarker = L.marker(latLng, {
+      draggable: true,
+      icon: createPreviewIcon(place),
+      zIndexOffset: 900,
+    })
+      .bindTooltip(label, {
+        permanent: true,
+        direction: "right",
+        offset: [14, -22],
+        className: "map-comment-label preview-comment-label",
+      })
+      .addTo(map);
+
+    state.previewMarker.on("dragend", () => {
+      const position = state.previewMarker.getLatLng();
+      els.placeLat.value = position.lat.toFixed(6);
+      els.placeLng.value = position.lng.toFixed(6);
+      updatePreviewMarker();
+    });
+  } else {
+    state.previewMarker.setLatLng(latLng);
+    state.previewMarker.setIcon(createPreviewIcon(place));
+    state.previewMarker.setTooltipContent(label);
+  }
 }
 
 function selectPlace(index) {
@@ -389,6 +460,7 @@ function fillEditor(place, index = "") {
   els.placeLat.value = Number.isFinite(normalized.lat) ? normalized.lat.toFixed(6) : "";
   els.placeLng.value = Number.isFinite(normalized.lng) ? normalized.lng.toFixed(6) : "";
   setEditorMode(index);
+  updatePreviewMarker();
 }
 
 function currentEditorPlace(overrides = {}) {
@@ -474,6 +546,8 @@ function upsertPlace(event) {
     lat,
     lng,
   });
+
+  clearPreviewMarker();
 
   if (index >= 0) {
     state.places[index] = place;
@@ -567,6 +641,10 @@ els.copyLink.addEventListener("click", copyShareLink);
 els.showRoute.addEventListener("change", renderRoute);
 els.newPlace.addEventListener("click", resetEditor);
 els.resetPanel.addEventListener("click", hideMenu);
+[els.placeTitle, els.placeType, els.placeNote, els.placeLat, els.placeLng].forEach((input) => {
+  input.addEventListener("input", updatePreviewMarker);
+  input.addEventListener("change", updatePreviewMarker);
+});
 els.editSelectedPlace.addEventListener("click", () => {
   const index = Number(els.editSelectedPlace.dataset.index);
   if (Number.isInteger(index)) {
