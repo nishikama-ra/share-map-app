@@ -59,6 +59,7 @@ const els = {
   placesList: document.querySelector("#placesList"),
   placeCount: document.querySelector("#placeCount"),
   copyLink: document.querySelector("#copyLink"),
+  restoreDraft: document.querySelector("#restoreDraft"),
   resetPanel: document.querySelector("#resetPanel"),
   shareStatus: document.querySelector("#shareStatus"),
   showRoute: document.querySelector("#showRoute"),
@@ -111,6 +112,19 @@ function decodePlaces(value) {
     .filter((place) => Number.isFinite(place.lat) && Number.isFinite(place.lng));
 }
 
+function loadDraftPlaces() {
+  try {
+    const draft = localStorage.getItem(STORAGE_KEY);
+    const parsed = draft ? JSON.parse(draft) : [];
+    return Array.isArray(parsed)
+      ? parsed.map(normalizePlace).filter((place) => Number.isFinite(place.lat) && Number.isFinite(place.lng))
+      : [];
+  } catch (error) {
+    console.warn("保存済み下書きを読み込めませんでした。", error);
+    return [];
+  }
+}
+
 function loadInitialPlaces() {
   const params = new URLSearchParams(window.location.hash.slice(1));
   const shared = params.get("places");
@@ -121,34 +135,34 @@ function loadInitialPlaces() {
       console.warn("共有URLを読み込めませんでした。", error);
     }
   }
-
-  try {
-    const draft = localStorage.getItem(STORAGE_KEY);
-    const parsed = draft ? JSON.parse(draft) : [];
-    return Array.isArray(parsed) ? parsed.map(normalizePlace) : [];
-  } catch (error) {
-    console.warn("保存済み下書きを読み込めませんでした。", error);
-    return [];
-  }
+  return [];
 }
 
 function saveDraft() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(state.places));
+  if (state.places.length) {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state.places));
+  } else {
+    localStorage.removeItem(STORAGE_KEY);
+  }
 }
-
 function shareUrl() {
   const url = new URL(window.location.href);
   url.hash = state.places.length ? `places=${encodePlaces(state.places)}` : "";
   return url.toString();
 }
 
+function renderDraftRestore() {
+  const draftPlaces = loadDraftPlaces();
+  els.restoreDraft.hidden = state.places.length > 0 || draftPlaces.length === 0;
+}
+
 function syncUrl() {
   history.replaceState(null, "", shareUrl());
   els.shareStatus.textContent = state.places.length
-    ? `${state.places.length}件の地点を含む共有URLを作成済みです。`
+    ? state.places.length + "件の地点を含む共有URLを作成済みです。"
     : "地点を追加するとURLが作成されます。";
+  renderDraftRestore();
 }
-
 function escapeHtml(value) {
   return String(value).replace(/[&<>"']/g, (char) => ({
     "&": "&amp;",
@@ -418,19 +432,20 @@ async function renderRoute() {
   }
 }
 
-function render() {
+function render({ persistDraft = true } = {}) {
   if (state.selectedIndex !== null && !state.places[state.selectedIndex]) {
     state.selectedIndex = null;
   }
   renderMarkers();
   renderList();
   renderSelectedPanel();
-  saveDraft();
+  if (persistDraft) {
+    saveDraft();
+  }
   syncUrl();
   renderRoute();
   requestAnimationFrame(() => map.invalidateSize());
 }
-
 function setEditorMode(index) {
   const isEditing = index !== "";
   els.placeForm.classList.toggle("is-editing", isEditing);
@@ -598,6 +613,20 @@ async function searchPlace(event) {
   }
 }
 
+function restoreDraft() {
+  const draftPlaces = loadDraftPlaces();
+  if (!draftPlaces.length) {
+    renderDraftRestore();
+    return;
+  }
+  state.places = draftPlaces;
+  state.selectedIndex = null;
+  resetEditor();
+  render();
+  fitToPlaces();
+  showMenu();
+}
+
 function copyShareLink() {
   const url = shareUrl();
   navigator.clipboard.writeText(url).then(() => {
@@ -628,6 +657,7 @@ map.on("click", (event) => {
 els.placeForm.addEventListener("submit", upsertPlace);
 els.searchForm.addEventListener("submit", searchPlace);
 els.copyLink.addEventListener("click", copyShareLink);
+els.restoreDraft.addEventListener("click", restoreDraft);
 els.showRoute.addEventListener("change", renderRoute);
 els.newPlace.addEventListener("click", resetEditor);
 els.resetPanel.addEventListener("click", hideMenu);
@@ -686,5 +716,5 @@ els.placesList.addEventListener("click", (event) => {
 
 state.places = loadInitialPlaces();
 resetEditor();
-render();
+render({ persistDraft: false });
 fitToPlaces();

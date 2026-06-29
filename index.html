@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Map Share</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-  <link rel="stylesheet" href="./styles.css?v=label-width-1">
+  <link rel="stylesheet" href="./styles.css?v=draft-restore-1">
 </head>
 <body>
   <main id="appShell" class="app-shell">
@@ -95,7 +95,10 @@
           <h2>共有リンク</h2>
           <p id="shareStatus">地点を追加するとURLが作成されます。</p>
         </div>
-        <button id="copyLink" type="button">コピー</button>
+        <div class="share-actions">
+          <button id="copyLink" type="button">コピー</button>
+          <button id="restoreDraft" class="secondary-button" type="button" hidden>下書き復元</button>
+        </div>
       </section>
 
       <section class="places-section" aria-label="登録地点">
@@ -109,6 +112,6 @@
   </main>
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  <script src="./app.js?v=preview-pin-3"></script>
+  <script src="./app.js?v=draft-restore-1"></script>
 </body>
 </html>

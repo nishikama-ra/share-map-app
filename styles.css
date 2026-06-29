@@ -249,6 +249,13 @@ select:focus {
 
 #shareStatus { margin-top: 5px; }
 
+.share-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
 .toggle-row {
   display: flex;
   align-items: center;
